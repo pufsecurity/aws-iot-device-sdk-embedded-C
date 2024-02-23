@@ -1,0 +1,4 @@
+thing name			: c-test-iot-device-puf-fpga
+device certificate 		: c-test-iot-device-puf-fpga.pem.crt
+device private key	 	: priv.bin
+device public key		: c-test-iot-device-puf-fpga-pubkey.pem

@@ -61,6 +61,9 @@
 #define MBEDTLS_SSL_PROTO_TLS1_2
 #define MBEDTLS_SSL_ALPN
 #define MBEDTLS_SSL_SERVER_NAME_INDICATION
+#ifdef PUFS_MBEDTLS_KEY_CB_LOG
+    #define MBEDTLS_SSL_EXPORT_KEYS
+#endif
 
 /* Check certificate key usage. */
 #define MBEDTLS_X509_CHECK_KEY_USAGE

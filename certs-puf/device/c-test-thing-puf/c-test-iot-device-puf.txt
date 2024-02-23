@@ -1,0 +1,5 @@
+thing name			: c-test-iot-device-puf
+device certificate 		: deviceCert.pem.crt
+device private key	 	: deviceCert.key
+device + pufs CA certficate 	: deviceCertAndCACert.crt
+device public key		: pubkey.pem

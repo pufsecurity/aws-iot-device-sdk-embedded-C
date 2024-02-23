@@ -1,6 +1,12 @@
 # Include filepaths for source and include.
 include( ${PLATFORM_DIR}/posix/posixFilePaths.cmake )
 
+
+# PUFS +++
+if (PUFS_HW_CRYPTO)
+    include ( ${3RDPARTY_DIR}/pufs/pufs_util/pufsUtilFilePaths.cmake )
+endif()
+# PUFS ---
 set( TRANSPORT_INTERFACE_INCLUDE_DIR
      ${MODULES_DIR}/standard/coreMQTT/source/interface )
 
@@ -25,6 +31,15 @@ target_link_libraries( plaintext_posix
 # Create target for POSIX implementation of OpenSSL.
 add_library( openssl_posix
                 ${OPENSSL_TRANSPORT_SOURCES} )
+
+# PUFS +++
+if (GCC_ARM)
+    target_include_directories( openssl_posix
+                                PUBLIC
+                                    ${OPENSSL_INCLUDE_DIR}
+    )
+endif ()
+# PUFS ---
 
 target_link_libraries( openssl_posix
                        PUBLIC
@@ -76,6 +91,64 @@ target_include_directories(
         ${CORE_PKCS11_3RDPARTY_LOCATION}/mbedtls_utils
 )
 
+# PUF +++
+if (PUFS_MODIFY)
+    # Create target for PUFSecurity POSIX implementation of MbedTLS transport.
+    add_library( transport_pufs_mbedtls_posix
+                     ${PUFS_MBEDTLS_TRANSPORT_SOURCES})
+
+    target_link_libraries( transport_pufs_mbedtls_posix
+                           PRIVATE
+                              mbedtls )
+
+    target_include_directories(
+        transport_pufs_mbedtls_posix
+        PUBLIC
+            ${COMMON_TRANSPORT_INCLUDE_PUBLIC_DIRS}
+            ${LOGGING_INCLUDE_DIRS}
+            ${TRANSPORT_INTERFACE_INCLUDE_DIR}
+        PRIVATE
+            ${CORE_PKCS11_3RDPARTY_LOCATION}/mbedtls_utils
+    )
+endif(PUFS_MODIFY)
+
+if (PUFS_HW_CRYPTO)
+    # Create target for PUFSecurity POSIX implementation of MbedTLS transport.
+    add_library( transport_pufs_hw_mbedtls_posix
+                     ${PUFS_HW_MBEDTLS_TRANSPORT_SOURCES}
+                     ${PUFS_HW_MBEDTLS_SOURCES})
+
+    if (PUFSE_HOST)
+
+        target_link_libraries( transport_pufs_hw_mbedtls_posix
+                               PRIVATE
+                                  mbedtls
+                                  pufse_host)
+
+    else(PUFSE_HOST)
+
+        target_link_libraries( transport_pufs_hw_mbedtls_posix
+                               PRIVATE
+                                  mbedtls
+                                  pufcc)
+
+    endif(PUFSE_HOST)
+
+    target_include_directories(
+        transport_pufs_hw_mbedtls_posix
+        PUBLIC
+            ${COMMON_TRANSPORT_INCLUDE_PUBLIC_DIRS}
+            ${LOGGING_INCLUDE_DIRS}
+            ${TRANSPORT_INTERFACE_INCLUDE_DIR}
+        PRIVATE
+            ${CORE_PKCS11_3RDPARTY_LOCATION}/mbedtls_utils
+            ${PUFS_HW_CRYPTO_INCLUDE_DIRS}
+            ${PUFS_HW_MBEDTLS_DIR}
+            ${PUFS_UTIL_INCLUDE_PUBLIC_DIRS}
+    )
+endif()
+# PUF ---
+
 # Install transport implementations as both shared and static libraries.
 if(INSTALL_PLATFORM_ABSTRACTIONS)
     install(TARGETS
@@ -85,4 +158,23 @@ if(INSTALL_PLATFORM_ABSTRACTIONS)
       transport_mbedtls_pkcs11_posix
       LIBRARY DESTINATION "${CSDK_LIB_INSTALL_PATH}"
       ARCHIVE DESTINATION "${CSDK_LIB_INSTALL_PATH}")
+
+    # PUFS +++
+    # Install pufsecurity mbedtls transport implementations
+    if (PUFS_MODIFY)
+        install(TARGETS
+            transport_pufs_mbedtls_posix
+            LIBRARY DESTINATION "${CSDK_LIB_INSTALL_PATH}"
+            ARCHIVE DESTINATION "${CSDK_LIB_INSTALL_PATH}")
+    endif()
+
+    # Install pufsecurity mbedtls transport implementations
+    if (PUFS_HW_CRYPTO)
+        install(TARGETS
+            transport_pufs_hw_mbedtls_posix
+            LIBRARY DESTINATION "${CSDK_LIB_INSTALL_PATH}"
+            ARCHIVE DESTINATION "${CSDK_LIB_INSTALL_PATH}")
+    endif()
+    # PUFS ---
+
 endif()

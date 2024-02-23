@@ -21,6 +21,28 @@ set( OPENSSL_TRANSPORT_SOURCES
 set( MBEDTLS_PKCS11_TRANSPORT_SOURCES
      ${CMAKE_CURRENT_LIST_DIR}/transport/src/mbedtls_pkcs11_posix.c )
 
+# PUF+++
+if (PUFS_MODIFY)
+    # PUFSecurity MbedTLS transport source files
+    set( PUFS_MBEDTLS_TRANSPORT_SOURCES
+         ${CMAKE_CURRENT_LIST_DIR}/transport/src/pufs_mbedtls_posix.c )
+
+    if (PUFS_HW_CRYPTO)
+
+        #include pufsecurity File Path
+        include( ${3RDPARTY_DIR}/pufs/pufsFilePaths.cmake )
+
+        # PUFSecurity HW MbedTLS transport source files
+        set( PUFS_HW_MBEDTLS_TRANSPORT_SOURCES
+             ${CMAKE_CURRENT_LIST_DIR}/transport/src/pufs_hw_mbedtls_posix.c )
+
+        set( PUFS_HW_MBEDTLS_SOURCES
+             ${PUFS_HW_MBEDTLS_DIR}/pufs_pk_wrap.c )
+
+    endif ()
+endif ()
+# PUF ---
+
 # Transport Public Include directories.
 set( COMMON_TRANSPORT_INCLUDE_PUBLIC_DIRS
      ${CMAKE_CURRENT_LIST_DIR}/transport/include

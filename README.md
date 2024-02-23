@@ -61,6 +61,7 @@
         * [Alternative option of Docker containers for running demos locally](#alternative-option-of-docker-containers-for-running-demos-locally)
             * [Installing Mosquitto to run MQTT demos locally](#installing-mosquitto-to-run-mqtt-demos-locally)
             * [Installing httpbin to run HTTP demos locally](#installing-httpbin-to-run-http-demos-locally)
+    * [Building and Running Demos with PUFsecurity Hardware Crypto](#building-and-running-demos-with-pufsecurity-hardware-crypto)
 * [Generating Documentation](#generating-documentation)
 
 ## Overview
@@ -698,6 +699,9 @@ Set `SERVER_HOST` in `demos/http/http_demo_basic_tls/demo_config.h` to the https
 Set `SERVER_HOST` in `demos/http/http_demo_basic_tls/demo_config.h` to the https link provided by ngrok, without `https://` preceding it.
 
 You must also download the Root CA certificate provided by the ngrok https link and set `ROOT_CA_CERT_PATH` in `demos/http/http_demo_basic_tls/demo_config.h` to the file path of the downloaded certificate.
+
+### Building and Running Demos with PUFsecurity Hardware Crypto
+See [README_PUFS](README_PUFS.md)
 
 ## Generating Documentation
 Note: For pre-generated documentation, please visit [Releases and Documentation](#releases-and-documentation) section.

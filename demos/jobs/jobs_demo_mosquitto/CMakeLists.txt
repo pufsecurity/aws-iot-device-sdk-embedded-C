@@ -15,6 +15,22 @@ add_executable(
         ${JSON_SOURCES}
 )
 
+# PUFS +++
+if (GCC_ARM)
+    target_link_libraries(
+        ${DEMO_NAME}
+        PUBLIC
+            ${MOSQUITTO_LIBRARY}
+    )
+
+    target_include_directories(
+        ${DEMO_NAME}
+        SYSTEM PUBLIC
+            ${MOSQUITTO_INCLUDE_DIR}
+    )
+
+else()
+# PUFS ---
 find_library(LIB_MOSQUITTO mosquitto)
 if(${LIB_MOSQUITTO} STREQUAL "LIB_MOSQUITTO-NOTFOUND")
     message( "Mosquitto was not installed. It will be built from source to run ${DEMO_NAME}." )
@@ -45,6 +61,10 @@ else()
             mosquitto
     )
 endif()
+
+# PUFS +++
+endif()
+# PUFS ---
 
 target_include_directories(
     ${DEMO_NAME}

@@ -1,5 +1,9 @@
 # Project information.
 cmake_minimum_required( VERSION 3.2.0 )
+if ( GCC_ARM )
+    set(CMAKE_TOOLCHAIN_FILE cmake_flags/arm_tool_chain.cmake)
+endif ()
+
 project( AwsIotDeviceSdkEmbeddedC
          VERSION 202211.00
          LANGUAGES C CXX )
@@ -14,6 +18,17 @@ endif()
 if( NOT DEFINED CMAKE_C_STANDARD_REQUIRED )
     set( CMAKE_C_STANDARD_REQUIRED ON )
 endif()
+
+# PUFS +++
+# Add PUFS DEFINITION
+set (PUFS_MODIFY  1)
+if (PUFS_MODIFY)
+    add_definitions(-DPUFS)
+    set (COPY_PUFS_CERT ON)
+
+    include (cmake_flags/pufs_flags.cmake)
+endif ()
+# PUFS ---
 
 # Do not allow in-source build.
 if( ${PROJECT_SOURCE_DIR} STREQUAL ${PROJECT_BINARY_DIR} )
@@ -159,3 +174,14 @@ if(DOWNLOAD_CERTS)
              DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests)
     endif()
 endif()
+
+# PUFS +++
+if (COPY_PUFS_CERT)
+    set (PUFS_CERT_DIR ${ROOT_DIR}/certs-puf)
+    message( "COPY certificates used by PUFsecurity to build/bin..." )
+
+    # Copy certificates to the build directory.
+    file(COPY "${PUFS_CERT_DIR}"
+         DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+endif()
+# PUFS ---

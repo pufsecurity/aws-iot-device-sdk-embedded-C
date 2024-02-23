@@ -58,6 +58,9 @@
  * #define AWS_IOT_ENDPOINT               "...insert here..."
  */
 
+#ifdef PUFS
+    #define AWS_IOT_ENDPOINT "a1yej2tjsft4ux-ats.iot.ap-southeast-2.amazonaws.com"
+#endif
 /**
  * @brief AWS IoT MQTT broker port number.
  *
@@ -85,9 +88,15 @@
  * @note This path is relative from the demo binary created. Update
  * ROOT_CA_CERT_PATH to the absolute path if this demo is executed from elsewhere.
  */
+#ifdef PUFS
+    #define ROOT_CA_CERT_PATH    "certs-puf/RootCA/aws/AmazonRootCA1.pem"
+#else
+
 #ifndef ROOT_CA_CERT_PATH
     #define ROOT_CA_CERT_PATH    "certificates/AmazonRootCA1.crt"
 #endif
+
+#endif /* PUFS */
 
 /**
  * @brief Path of the file containing the client certificate.
@@ -101,6 +110,15 @@
  * #define CLIENT_CERT_PATH    "...insert here..."
  */
 
+#ifdef PUFS
+
+#ifdef PUFS_ROOT_CA
+    #define CLIENT_CERT_PATH    "certs-puf/device/c-test-thing-puf/deviceCert.crt"
+#else
+    #define CLIENT_CERT_PATH    "certs-puf/device/c-test-thing/c-test-thing-certificate.pem.crt"
+#endif
+
+#endif /* PUFS */
 /**
  * @brief Path of the file containing the client's private key.
  *
@@ -113,6 +131,15 @@
  * #define CLIENT_PRIVATE_KEY_PATH    "...insert here..."
  */
 
+#ifdef PUFS
+
+#ifdef PUFS_ROOT_CA
+    #define CLIENT_PRIVATE_KEY_PATH    "certs-puf/device/c-test-thing-puf/deviceCert.key"
+#else
+    #define CLIENT_PRIVATE_KEY_PATH    "certs-puf/device/c-test-thing/c-test-thing-private.pem.key"
+#endif
+
+#endif /* PUFS */
 /**
  * @brief The username value for authenticating client to MQTT broker when
  * username/password based client authentication is used.
@@ -152,9 +179,21 @@
  *
  * No two clients may use the same client identifier simultaneously.
  */
+#ifdef PUFS
+
+#ifdef PUFS_ROOT_CA
+    #define CLIENT_IDENTIFIER    "c-test-iot-device-puf"
+#else
+    #define CLIENT_IDENTIFIER    "c-test-iot-device"
+#endif
+
+#else
+
 #ifndef CLIENT_IDENTIFIER
     #define CLIENT_IDENTIFIER    "testclient"
 #endif
+
+#endif /* PUFS */
 
 /**
  * @brief Size of the network buffer for MQTT packets.

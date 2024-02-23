@@ -1,0 +1,8 @@
+thing name			: c-test-iot-device
+device certificate 		: c-test-thing-certificate.pem.crt
+device private key	 	: c-test-thing-private.pem.key
+device public key		: c-test-thing-public.pem.key
+
+prov_exp_tmplate		: json template for Provision policy
+
+Signed by AWS IoT

@@ -109,6 +109,9 @@
  * #define CLAIM_CERT_PATH    "...insert here..."
  */
 
+#ifdef PUFS
+    #define CLAIM_CERT_PATH  "certs-puf/device/c-test-thing/c-test-thing-certificate.pem.crt"
+#endif
 /**
  * @brief Path of the file containing the provisioning claim private key. This
  * key corresponds to the provisioning claim certificate and is used to
@@ -122,6 +125,9 @@
  * #define CLAIM_PRIVATE_KEY_PATH    "...insert here..."
  */
 
+#ifdef PUFS
+    #define CLAIM_PRIVATE_KEY_PATH "certs-puf/device/c-test-thing/c-test-thing-private.pem.key"
+#endif
 /**
  * @brief Name of the provisioning template to use for the RegisterThing
  * portion of the Fleet Provisioning workflow.
@@ -141,6 +147,9 @@
  * #define PROVISIONING_TEMPLATE_NAME    "...insert here..."
  */
 
+#ifdef PUFS
+    #define PROVISIONING_TEMPLATE_NAME "certs-puf/device/c-test-thing/prov_exp_tmplate.json"
+#endif
 /**
  * @brief Serial number to send in the request to the Fleet Provisioning
  * RegisterThing API.
@@ -150,6 +159,10 @@
  *
  * #define DEVICE_SERIAL_NUMBER    "...insert here..."
  */
+
+#ifdef PUFS
+    #define DEVICE_SERIAL_NUMBER    "12345678"
+#endif
 
 /**
  * @brief Subject name to use when creating the certificate signing request (CSR)

@@ -1,0 +1,614 @@
+diff --git a/include/mbedtls/platform.h b/include/mbedtls/platform.h
+index bdef07498..c2e1e2410 100644
+--- a/include/mbedtls/platform.h
++++ b/include/mbedtls/platform.h
+@@ -129,6 +129,17 @@ extern "C" {
+ 
+ /* \} name SECTION: Module settings */
+ 
++#if defined(PUFSE_HOST) && defined(DEMO_LOG_LEVEL)
++
++#define PUFS_TLS_DEMO_LOG  printf
++//#define PUFS_TLS_DEMO_BUF_LOG  printf
++#define PUFS_TLS_DEMO_BUF_LOG  {}  //Temporarily mark
++#else
++#define PUFS_TLS_DEMO_LOG  {}
++#define PUFS_TLS_DEMO_BUF_LOG  {}
++#endif
++
++
+ /*
+  * The function pointers for calloc and free.
+  */
+diff --git a/library/cipher.c b/library/cipher.c
+index 4ec40d2ca..ac2a742eb 100644
+--- a/library/cipher.c
++++ b/library/cipher.c
+@@ -1326,6 +1326,10 @@ static int mbedtls_cipher_aead_encrypt( mbedtls_cipher_context_t *ctx,
+ #if defined(MBEDTLS_GCM_C)
+     if( MBEDTLS_MODE_GCM == ctx->cipher_info->mode )
+     {
++        #if defined (PUFSE_HOST) && defined(MBEDTLS_GCM_ALT)
++        PUFS_TLS_DEMO_BUF_LOG("      --> calls mbedtls_gcm_crypt_and_tag \n" );
++        #endif
++
+         *olen = ilen;
+         return( mbedtls_gcm_crypt_and_tag( ctx->cipher_ctx, MBEDTLS_GCM_ENCRYPT,
+                                            ilen, iv, iv_len, ad, ad_len,
+diff --git a/library/md.c b/library/md.c
+index a10a83563..5a548f2f8 100644
+--- a/library/md.c
++++ b/library/md.c
+@@ -640,7 +640,20 @@ int mbedtls_md( const mbedtls_md_info_t *md_info, const unsigned char *input, si
+         case MBEDTLS_MD_SHA224:
+             return( mbedtls_sha256_ret( input, ilen, output, 1 ) );
+         case MBEDTLS_MD_SHA256:
++          #if defined(PUFSE_HOST) && defined(MBEDTLS_SHA256_ALT)
++            {
++                int ret = 0;
++                PUFS_SHA_FUNC_LOG_OFF;
++                PUFS_TLS_DEMO_LOG("      \"mbedtls_md\" calls \"mbedtls_sha256_ret\" \n");
++                PUFS_TLS_DEMO_LOG("      --> calls \"pufs_mbedtls_sha256_xx\" functions (init, start, update, finish, free)\n\n");
++                ret = mbedtls_sha256_ret( input, ilen, output, 0 );
++                PUFS_SHA_FUNC_LOG_ON;
++                return ret;
++            }
++          #else
++
+             return( mbedtls_sha256_ret( input, ilen, output, 0 ) );
++          #endif /* PUFS_TLS_CRYPTO_ALT && MBEDTLS_SHA256_ALT*/
+ #endif
+ #if defined(MBEDTLS_SHA512_C)
+ #if !defined(MBEDTLS_SHA512_NO_SHA384)
+diff --git a/library/ssl_cli.c b/library/ssl_cli.c
+index b87879ce6..021a8b381 100644
+--- a/library/ssl_cli.c
++++ b/library/ssl_cli.c
+@@ -3822,7 +3822,9 @@ static int ssl_write_client_key_exchange( mbedtls_ssl_context *ssl )
+             mbedtls_ecdh_enable_restart( &ssl->handshake->ecdh_ctx );
+         }
+ #endif
+-
++        #if defined (PUFSE_HOST) && defined(MBEDTLS_ECDH_GEN_PUBLIC_ALT)
++        PUFS_TLS_DEMO_LOG("[TLS] ssl_write_client_key_exchange calls mbedtls_ecdh_make_public to generate public key for ecdh key excahnge\n");
++        #endif
+         ret = mbedtls_ecdh_make_public( &ssl->handshake->ecdh_ctx,
+                                 &content_len,
+                                 &ssl->out_msg[header_len], 1000,
+@@ -3837,6 +3839,10 @@ static int ssl_write_client_key_exchange( mbedtls_ssl_context *ssl )
+             return( ret );
+         }
+ 
++        #if defined (PUFSE_HOST) && defined(MBEDTLS_ECDH_GEN_PUBLIC_ALT)
++        PUFS_TLS_DEMO_LOG("\n");
++        #endif
++
+         MBEDTLS_SSL_DEBUG_ECDH( 3, &ssl->handshake->ecdh_ctx,
+                                 MBEDTLS_DEBUG_ECDH_Q );
+ 
+@@ -3851,6 +3857,10 @@ ecdh_calc_secret:
+         if( ssl->handshake->ecrs_enabled )
+             content_len = ssl->handshake->ecrs_n;
+ #endif
++        #if defined (PUFSE_HOST) && defined(MBEDTLS_ECDH_COMPUTE_SHARED_ALT)
++        PUFS_TLS_DEMO_LOG("[TLS] ssl_write_client_key_exchange calls mbedtls_ecdh_calc_secret to calculate ecdh shared key\n");
++        #endif
++
+         if( ( ret = mbedtls_ecdh_calc_secret( &ssl->handshake->ecdh_ctx,
+                                   &ssl->handshake->pmslen,
+                                   ssl->handshake->premaster,
+@@ -3865,6 +3875,10 @@ ecdh_calc_secret:
+             return( ret );
+         }
+ 
++        #if defined (PUFSE_HOST) && defined(MBEDTLS_ECDH_COMPUTE_SHARED_ALT)
++        PUFS_TLS_DEMO_LOG("\n");
++        #endif
++
+         MBEDTLS_SSL_DEBUG_ECDH( 3, &ssl->handshake->ecdh_ctx,
+                                 MBEDTLS_DEBUG_ECDH_Z );
+     }
+diff --git a/library/ssl_msg.c b/library/ssl_msg.c
+index 0b696dd56..c580a1b95 100644
+--- a/library/ssl_msg.c
++++ b/library/ssl_msg.c
+@@ -616,6 +616,12 @@ int mbedtls_ssl_encrypt_buf( mbedtls_ssl_context *ssl,
+     ((void) p_rng);
+ #endif
+ 
++
++#if defined (PUFSE_HOST) && defined(MBEDTLS_GCM_ALT)
++    PUFS_TLS_DEMO_BUF_LOG("[TLS]  mbedtls_ssl_encrypt_buf \"encrypt\" data to be trasmitted (len:%d) mode:%d \n", rec->data_len,
++                       mbedtls_cipher_get_cipher_mode( &transform->cipher_ctx_dec ) );
++#endif
++
+     MBEDTLS_SSL_DEBUG_MSG( 2, ( "=> encrypt buf" ) );
+ 
+     if( transform == NULL )
+@@ -897,6 +903,9 @@ int mbedtls_ssl_encrypt_buf( mbedtls_ssl_context *ssl,
+         /*
+          * Encrypt and authenticate
+          */
++#if defined (PUFSE_HOST) && defined(MBEDTLS_GCM_ALT)
++        //PUFS_TLS_DEMO_BUF_LOG("      --> calls mbedtls_cipher_auth_encrypt_ext \n" );
++#endif
+ 
+         if( ( ret = mbedtls_cipher_auth_encrypt_ext( &transform->cipher_ctx_enc,
+                    iv, transform->ivlen,
+@@ -998,6 +1007,10 @@ int mbedtls_ssl_encrypt_buf( mbedtls_ssl_context *ssl,
+                             " bytes of IV and %" MBEDTLS_PRINTF_SIZET " bytes of padding",
+                             rec->data_len, transform->ivlen,
+                             padlen + 1 ) );
++#if defined (PUFSE_HOST) && defined(MBEDTLS_GCM_ALT)
++       PUFS_TLS_DEMO_BUF_LOG("[TLS] %s %d calls mbedtls_cipher_crypt len:%d\n",
++                        __func__, __LINE__, rec->data_len );
++#endif
+ 
+         if( ( ret = mbedtls_cipher_crypt( &transform->cipher_ctx_enc,
+                                    transform->iv_enc,
+@@ -1128,6 +1141,10 @@ int mbedtls_ssl_decrypt_buf( mbedtls_ssl_context const *ssl,
+     ((void) ssl);
+ #endif
+ 
++#if defined (PUFSE_HOST) && defined(MBEDTLS_GCM_ALT)
++    PUFS_TLS_DEMO_BUF_LOG("[TLS] mbedtls_ssl_decrypt_buf decrypt received data (len:%d) mode:%d\n", rec->data_len, mbedtls_cipher_get_cipher_mode( &transform->cipher_ctx_dec ) );
++#endif
++
+     MBEDTLS_SSL_DEBUG_MSG( 2, ( "=> decrypt buf" ) );
+     if( rec == NULL                     ||
+         rec->buf == NULL                ||
+@@ -1156,6 +1173,7 @@ int mbedtls_ssl_decrypt_buf( mbedtls_ssl_context const *ssl,
+     if( mode == MBEDTLS_MODE_STREAM )
+     {
+         padlen = 0;
++
+         if( ( ret = mbedtls_cipher_crypt( &transform->cipher_ctx_dec,
+                                    transform->iv_dec,
+                                    transform->ivlen,
+@@ -1254,6 +1272,10 @@ int mbedtls_ssl_decrypt_buf( mbedtls_ssl_context const *ssl,
+         MBEDTLS_SSL_DEBUG_BUF( 4, "TAG used", data + rec->data_len,
+                                transform->taglen );
+ 
++#if defined (PUFSE_HOST) && defined(MBEDTLS_GCM_ALT)
++        //PUFS_TLS_DEMO_BUF_LOG("      --> calls mbedtls_cipher_auth_decrypt_ext\n");
++#endif
++
+         /*
+          * Decrypt and authenticate
+          */
+diff --git a/library/ssl_tls.c b/library/ssl_tls.c
+index 2e6469de8..951a428cb 100644
+--- a/library/ssl_tls.c
++++ b/library/ssl_tls.c
+@@ -770,6 +770,29 @@ exit:
+ }
+ #endif /* MBEDTLS_USE_PSA_CRYPTO */
+ #if defined(MBEDTLS_SHA256_C)
++#if defined (PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++static int pufs_tls_prf_sha256( const unsigned char *secret, size_t slen,
++                           const char *label,
++                           const unsigned char *random, size_t rlen,
++                           unsigned char *dstbuf, size_t dlen )
++{
++    int rt = 0;
++
++    PUFS_TLS_DEMO_LOG("[TLS] pufs_tls_prf_sha256 --> call tls_prf_generic \n");
++    PUFS_TLS_DEMO_LOG("      --> calls mbedtls_md_hmac_xx functions (starts,update,finish; (reset,update,finish) x n; free ) \n\n");
++
++    PUFS_SHA_FUNC_LOG_OFF;
++
++    rt = tls_prf_generic( MBEDTLS_MD_SHA256, secret, slen,
++                             label, random, rlen, dstbuf, dlen );
++
++    PUFS_SHA_FUNC_LOG_ON;
++
++    return rt;
++
++}
++#endif
++
+ static int tls_prf_sha256( const unsigned char *secret, size_t slen,
+                            const char *label,
+                            const unsigned char *random, size_t rlen,
+@@ -811,6 +834,13 @@ static void ssl_calc_finished_tls( mbedtls_ssl_context *, unsigned char *, int )
+ 
+ #if defined(MBEDTLS_SSL_PROTO_TLS1_2)
+ #if defined(MBEDTLS_SHA256_C)
++
++#if defined (PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++static void pufs_ssl_update_checksum_sha256( mbedtls_ssl_context *, const unsigned char *, size_t );
++static void pufs_ssl_calc_verify_tls_sha256( const mbedtls_ssl_context *,unsigned char*, size_t * );
++static void pufs_ssl_calc_finished_tls_sha256( mbedtls_ssl_context *,unsigned char *, int );
++#endif /* PUFSE_HOST && MBEDTLS_PUFS_TLS_PRF_CALC_ALT */
++
+ static void ssl_update_checksum_sha256( mbedtls_ssl_context *, const unsigned char *, size_t );
+ static void ssl_calc_verify_tls_sha256( const mbedtls_ssl_context *,unsigned char*, size_t * );
+ static void ssl_calc_finished_tls_sha256( mbedtls_ssl_context *,unsigned char *, int );
+@@ -1035,6 +1065,11 @@ static int ssl_populate_transform( mbedtls_ssl_transform *transform,
+         return( MBEDTLS_ERR_SSL_BAD_INPUT_DATA );
+     }
+ 
++#if defined(PUFSE_HOST) && defined(DEMO_LOG_LEVEL)
++    PUFS_TLS_DEMO_LOG("      ciphersuit = %s\n\n", mbedtls_ssl_get_ciphersuite_name( ciphersuite ));
++#endif
++
++
+ #if defined(MBEDTLS_SSL_DTLS_CONNECTION_ID)
+     /* Copy own and peer's CID if the use of the CID
+      * extension has been negotiated. */
+@@ -1353,6 +1388,11 @@ static int ssl_populate_transform( mbedtls_ssl_transform *transform,
+     }
+ #endif
+ 
++#if defined(PUFSE_HOST) && defined(DEMO_LOG_LEVEL)
++    PUFS_TLS_DEMO_LOG("[TLS] %s calls mbedtls_cipher_setup to set cipher as %s  \n", __func__ , cipher_info->name);
++#endif
++
++
+ #if defined(MBEDTLS_USE_PSA_CRYPTO)
+ 
+     /* Only use PSA-based ciphers for TLS-1.2.
+@@ -1440,6 +1480,11 @@ static int ssl_populate_transform( mbedtls_ssl_transform *transform,
+         goto end;
+     }
+ 
++#if defined(PUFSE_HOST) && defined(DEMO_LOG_LEVEL)
++    PUFS_TLS_DEMO_LOG("[TLS] %s calls mbedtls_cipher_setkey to set t;s enc/dec keys \n", __func__ );
++#endif
++
++
+     if( ( ret = mbedtls_cipher_setkey( &transform->cipher_ctx_enc, key1,
+                                cipher_info->key_bitlen,
+                                MBEDTLS_ENCRYPT ) ) != 0 )
+@@ -1552,9 +1597,16 @@ static int ssl_set_handshake_prfs( mbedtls_ssl_handshake_params *handshake,
+ #if defined(MBEDTLS_SHA256_C)
+     if( minor_ver == MBEDTLS_SSL_MINOR_VERSION_3 )
+     {
++
++        #if defined(PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++        handshake->tls_prf = pufs_tls_prf_sha256;
++        handshake->calc_verify = pufs_ssl_calc_verify_tls_sha256;
++        handshake->calc_finished = pufs_ssl_calc_finished_tls_sha256;
++        #else
+         handshake->tls_prf = tls_prf_sha256;
+         handshake->calc_verify = ssl_calc_verify_tls_sha256;
+         handshake->calc_finished = ssl_calc_finished_tls_sha256;
++        #endif
+     }
+     else
+ #endif
+@@ -1725,6 +1777,11 @@ int mbedtls_ssl_derive_keys( mbedtls_ssl_context *ssl )
+         return( ret );
+     }
+ 
++#if defined(PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++    PUFS_TLS_DEMO_LOG("[TLS] %s calls ssl_compute_master \n", __func__);
++#endif
++
++
+     /* Compute master secret if needed */
+     ret = ssl_compute_master( ssl->handshake,
+                               ssl->session_negotiate->master,
+@@ -1746,6 +1803,12 @@ int mbedtls_ssl_derive_keys( mbedtls_ssl_context *ssl )
+         mbedtls_platform_zeroize( tmp, sizeof( tmp ) );
+     }
+ 
++
++#if defined(PUFSE_HOST) && defined(DEMO_LOG_LEVEL)
++    PUFS_TLS_DEMO_LOG("[TLS] %s calls ssl_populate_transform ciphersuit\n", __func__);
++#endif
++
++
+     /* Populate transform structure */
+     ret = ssl_populate_transform( ssl->transform_negotiate,
+                                   ssl->session_negotiate->ciphersuite,
+@@ -1772,6 +1835,12 @@ int mbedtls_ssl_derive_keys( mbedtls_ssl_context *ssl )
+         return( ret );
+     }
+ 
++
++#if defined(PUFSE_HOST) && defined(DEMO_LOG_LEVEL)
++    PUFS_TLS_DEMO_LOG("\n");
++#endif
++
++
+     /* We no longer need Server/ClientHello.random values */
+     mbedtls_platform_zeroize( ssl->handshake->randbytes,
+                       sizeof( ssl->handshake->randbytes ) );
+@@ -1883,6 +1952,52 @@ void ssl_calc_verify_tls( const mbedtls_ssl_context *ssl,
+ 
+ #if defined(MBEDTLS_SSL_PROTO_TLS1_2)
+ #if defined(MBEDTLS_SHA256_C)
++#if defined (PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++void pufs_ssl_calc_verify_tls_sha256( const mbedtls_ssl_context *ssl,
++                                 unsigned char *hash,
++                                 size_t *hlen )
++{
++    mbedtls_sha256_context sha256;
++    mbedtls_sha256_context *fin_sha256;
++    int  ret = 0;
++
++    PUFS_TLS_DEMO_LOG("[TLS] pufs_ssl_calc_verify_tls_sha256\n");
++    PUFS_TLS_DEMO_LOG("      --> call pufs_mbedtls_sha256 functions - init, start, update_chekcsum, finish, and free\n\n");
++
++    PUFS_SHA_FUNC_LOG_OFF;
++
++    mbedtls_sha256_init( &sha256 );
++
++    MBEDTLS_SSL_DEBUG_MSG( 2, ( "=> calc verify sha256" ) );
++
++    fin_sha256 = &ssl->handshake->fin_sha256;
++
++    if( ( ret = mbedtls_sha256_starts_ret( &sha256, 0 ) ) != 0 )
++    {
++        PUFS_SHA_FUNC_LOG_ON;
++        printf("mbedtls_sha256_starts_ret start failed\n");
++        //to do : error handling
++    }
++
++//    mbedtls_sha256_clone( &sha256, &ssl->handshake->fin_sha256 );
++    mbedtls_sha256_update_checksum_ret( &sha256, &ssl->handshake->fin_sha256  );
++
++    mbedtls_sha256_finish_ret( &sha256, hash );
++
++    *hlen = 32;
++
++
++    MBEDTLS_SSL_DEBUG_BUF( 3, "calculated verify result", hash, *hlen );
++    MBEDTLS_SSL_DEBUG_MSG( 2, ( "<= calc verify" ) );
++
++    mbedtls_sha256_free( &sha256 );
++    PUFS_SHA_FUNC_LOG_ON;
++
++    return;
++}
++
++#endif /* PUFSE_HOST && MBEDTLS_PUFS_TLS_PRF_CALC_ALT */
++
+ void ssl_calc_verify_tls_sha256( const mbedtls_ssl_context *ssl,
+                                  unsigned char *hash,
+                                  size_t *hlen )
+@@ -2359,6 +2474,10 @@ static int ssl_check_peer_crt_unchanged( mbedtls_ssl_context *ssl,
+     if( digest_len > MBEDTLS_SSL_PEER_CERT_DIGEST_MAX_LEN )
+         return( -1 );
+ 
++#if defined(PUFSE_HOST) && defined(MBEDTLS_SHA256_ALT)
++    PUFS_TLS_DEMO_LOG("  --> mbedtls_md\n");
++#endif
++
+     ret = mbedtls_md( digest_info, crt_buf, crt_buf_len, tmp_digest );
+     if( ret != 0 )
+         return( -1 );
+@@ -2465,6 +2584,9 @@ static int ssl_parse_certificate_chain( mbedtls_ssl_context *ssl,
+              * mitigating the triple handshake attack. On success, reuse
+              * the original end-CRT instead of parsing it again. */
+             MBEDTLS_SSL_DEBUG_MSG( 3, ( "Check that peer CRT hasn't changed during renegotiation" ) );
++         #if defined(PUFSE_HOST) && defined(MBEDTLS_SHA256_ALT)
++            PUFS_TLS_DEMO_LOG("[TLS] %s check if peer' certificate changed calls ssl_check_peer_crt_unchanged\n", __func__);
++         #endif
+             if( ssl_check_peer_crt_unchanged( ssl,
+                                               &ssl->in_msg[i],
+                                               n ) != 0 )
+@@ -2805,6 +2927,10 @@ static int ssl_remember_peer_crt_digest( mbedtls_ssl_context *ssl,
+         return( MBEDTLS_ERR_SSL_ALLOC_FAILED );
+     }
+ 
++
++    #if defined (PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++    PUFS_TLS_DEMO_LOG("      \"%s\" calls \"mbedtls_md\" to calculate peer' cert digest (len:%d)\n", __func__, len);
++    #endif
+     ret = mbedtls_md( mbedtls_md_info_from_type(
+                           MBEDTLS_SSL_PEER_CERT_DIGEST_DFL_TYPE ),
+                       start, len,
+@@ -2949,6 +3075,10 @@ crt_verify:
+         mbedtls_free( chain );
+         chain = NULL;
+ 
++        #if defined (PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++        PUFS_TLS_DEMO_LOG("[TLS] %s calls ssl_remember_peer_crt_digest\n", __func__);
++        #endif
++
+         ret = ssl_remember_peer_crt_digest( ssl, crt_start, crt_len );
+         if( ret != 0 )
+             goto exit;
+@@ -3006,10 +3136,19 @@ void mbedtls_ssl_optimize_checksum( mbedtls_ssl_context *ssl,
+     else
+ #endif
+ #if defined(MBEDTLS_SHA256_C)
++#if defined(PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++    if( ciphersuite_info->mac != MBEDTLS_MD_SHA384 )
++    {
++        ssl->handshake->update_checksum = pufs_ssl_update_checksum_sha256;
++
++    }
++    else
++#else
+     if( ciphersuite_info->mac != MBEDTLS_MD_SHA384 )
+         ssl->handshake->update_checksum = ssl_update_checksum_sha256;
+     else
+-#endif
++#endif /* PUFSE_HOST && MBEDTLS_PUFS_TLS_PRF_CALC_ALT */
++#endif /* MBEDTLS_SHA256_C */
+ #endif /* MBEDTLS_SSL_PROTO_TLS1_2 */
+     {
+         MBEDTLS_SSL_DEBUG_MSG( 1, ( "should never happen" ) );
+@@ -3057,7 +3196,13 @@ static void ssl_update_checksum_start( mbedtls_ssl_context *ssl,
+ #if defined(MBEDTLS_USE_PSA_CRYPTO)
+     psa_hash_update( &ssl->handshake->fin_sha256_psa, buf, len );
+ #else
++  #if defined (PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++
++    //PUFS_TLS_DEMO_LOG("[TLS] %s calls mbedtls_sha256_update_checksum_msg_ret to backup msg\n", __func__);
++    mbedtls_sha256_update_checksum_msg_ret(&ssl->handshake->fin_sha256, buf, len);
++  #else
+     mbedtls_sha256_update_ret( &ssl->handshake->fin_sha256, buf, len );
++  #endif /* PUFSE_HOST && MBEDTLS_PUFS_TLS_PRF_CALC_ALT */
+ #endif
+ #endif
+ #if defined(MBEDTLS_SHA512_C) && !defined(MBEDTLS_SHA512_NO_SHA384)
+@@ -3082,12 +3227,31 @@ static void ssl_update_checksum_md5sha1( mbedtls_ssl_context *ssl,
+ 
+ #if defined(MBEDTLS_SSL_PROTO_TLS1_2)
+ #if defined(MBEDTLS_SHA256_C)
++#if defined (PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++
++static void pufs_ssl_update_checksum_sha256( mbedtls_ssl_context *ssl,
++                                        const unsigned char *buf, size_t len )
++{
++    mbedtls_sha256_context *sha256_ctx;
++    sha256_ctx = &ssl->handshake->fin_sha256;
++
++    //Backup msg for checksum
++    mbedtls_sha256_update_checksum_msg_ret(sha256_ctx, buf, len);
++
++}
++
++#endif /* PUFSE_HOST && MBEDTLS_PUFS_TLS_PRF_CALC_ALT */
++
+ static void ssl_update_checksum_sha256( mbedtls_ssl_context *ssl,
+                                         const unsigned char *buf, size_t len )
+ {
+ #if defined(MBEDTLS_USE_PSA_CRYPTO)
+     psa_hash_update( &ssl->handshake->fin_sha256_psa, buf, len );
+ #else
++
++#if defined(PUFSE_HOST) && defined(MBEDTLS_SHA256_ALT)
++    PUFS_TLS_DEMO_LOG("[TLS] ssl_update_checksum_sha256 calls mbedtls_sha256_update_ret to update messages\n");
++#endif
+     mbedtls_sha256_update_ret( &ssl->handshake->fin_sha256, buf, len );
+ #endif
+ }
+@@ -3252,6 +3416,76 @@ static void ssl_calc_finished_tls(
+ 
+ #if defined(MBEDTLS_SSL_PROTO_TLS1_2)
+ #if defined(MBEDTLS_SHA256_C)
++#if defined (PUFSE_HOST) && defined(MBEDTLS_PUFS_TLS_PRF_CALC_ALT)
++static void pufs_ssl_calc_finished_tls_sha256(
++                mbedtls_ssl_context *ssl, unsigned char *buf, int from )
++{
++    int len = 12;
++    const char *sender;
++    unsigned char padbuf[32];
++    mbedtls_sha256_context sha256;
++    mbedtls_sha256_context *fin_sha256;
++    int ret = 0;
++
++#if defined(PUFSE_HOST) && defined(MBEDTLS_SHA256_ALT)
++    PUFS_TLS_DEMO_LOG("[TLS] pufs_ssl_calc_finished_tls_sha256\n");
++    PUFS_TLS_DEMO_LOG("      --> call pufs_mbedtls_sha256_xx functions - init, start, update_checksum, finish, and free\n\n");
++#endif
++
++    mbedtls_ssl_session *session = ssl->session_negotiate;
++    if( !session )
++        session = ssl->session;
++
++    sender = ( from == MBEDTLS_SSL_IS_CLIENT )
++             ? "client finished"
++             : "server finished";
++
++    PUFS_SHA_FUNC_LOG_OFF;
++
++    mbedtls_sha256_init( &sha256 );
++
++    MBEDTLS_SSL_DEBUG_MSG( 2, ( "=> calc  finished tls sha256" ) );
++
++    if( ( ret = mbedtls_sha256_starts_ret( &sha256, 0 ) ) != 0 )
++    {
++        printf("mbedtls_sha256_starts_ret start failed\n");
++        //to do : error handling
++    }
++
++    fin_sha256 = &ssl->handshake->fin_sha256;
++
++
++//    mbedtls_sha256_clone( &sha256, &ssl->handshake->fin_sha256 );
++
++    mbedtls_sha256_update_checksum_ret(&sha256, &ssl->handshake->fin_sha256);
++
++    /*
++     * TLSv1.2:
++     *   hash = PRF( master, finished_label,
++     *               Hash( handshake ) )[0.11]
++     */
++
++#if !defined(MBEDTLS_SHA256_ALT)
++    MBEDTLS_SSL_DEBUG_BUF( 4, "finished sha2 state", (unsigned char *)
++                   sha256.state, sizeof( sha256.state ) );
++#endif
++
++    mbedtls_sha256_finish_ret( &sha256, padbuf );
++    mbedtls_sha256_free( &sha256 );
++
++    PUFS_SHA_FUNC_LOG_ON;
++
++    ssl->handshake->tls_prf( session->master, 48, sender,
++                             padbuf, 32, buf, len );
++
++    MBEDTLS_SSL_DEBUG_BUF( 3, "calc finished result", buf, len );
++
++    mbedtls_platform_zeroize(  padbuf, sizeof(  padbuf ) );
++
++    MBEDTLS_SSL_DEBUG_MSG( 2, ( "<= calc  finished" ) );
++}
++#endif /* PUFSE_HOST && MBEDTLS_PUFS_TLS_PRF_CALC_ALT */
++
+ static void ssl_calc_finished_tls_sha256(
+                 mbedtls_ssl_context *ssl, unsigned char *buf, int from )
+ {
+@@ -3728,8 +3962,17 @@ static void ssl_handshake_params_init( mbedtls_ssl_handshake_params *handshake )
+     handshake->fin_sha256_psa = psa_hash_operation_init();
+     psa_hash_setup( &handshake->fin_sha256_psa, PSA_ALG_SHA_256 );
+ #else
++
++#if defined(PUFSE_HOST) && defined(MBEDTLS_SHA256_ALT)
++    PUFS_TLS_DEMO_LOG("[TLS] ssl_handshake_params_init\n");
++    PUFS_TLS_DEMO_LOG("      --> call \"pufs_mbedtls_sha256_init\" and \"mbedtls_sha256_starts_ret\" functions\n\n");
++#endif
+     mbedtls_sha256_init(   &handshake->fin_sha256    );
+     mbedtls_sha256_starts_ret( &handshake->fin_sha256, 0 );
++#if defined(PUFSE_HOST) && defined(MBEDTLS_SHA256_ALT)
++    PUFS_TLS_DEMO_LOG("\n");
++#endif
++
+ #endif
+ #endif
+ #if defined(MBEDTLS_SHA512_C) && !defined(MBEDTLS_SHA512_NO_SHA384)
+@@ -7640,6 +7883,15 @@ int mbedtls_ssl_get_key_exchange_md_tls1_2( mbedtls_ssl_context *ssl,
+ 
+     MBEDTLS_SSL_DEBUG_MSG( 3, ( "Perform mbedtls-based computation of digest of ServerKeyExchange" ) );
+ 
++
++
++#if defined(PUFSE_HOST) && defined(MBEDTLS_SHA256_ALT)
++    PUFS_TLS_DEMO_LOG("[TLS] %s calls mbedtls_md_xx functions to calculate digest of ServerKeyExchange\n", __func__);
++    PUFS_TLS_DEMO_LOG("      --> md init, setup, update x2, finish, free\n");
++    PUFS_TLS_DEMO_LOG("      --> pufs_mbedtls_sha256_xx functions (init, start, update, finish, free) \n\n");
++
++#endif
++
+     mbedtls_md_init( &ctx );
+ 
+     /*
+@@ -7677,6 +7929,9 @@ int mbedtls_ssl_get_key_exchange_md_tls1_2( mbedtls_ssl_context *ssl,
+ 
+ exit:
+     mbedtls_md_free( &ctx );
++#if defined(PUFSE_HOST) && defined(MBEDTLS_SHA256_ALT)
++    PUFS_TLS_DEMO_LOG("\n");
++#endif
+ 
+     if( ret != 0 )
+         mbedtls_ssl_send_alert_message( ssl, MBEDTLS_SSL_ALERT_LEVEL_FATAL,
+diff --git a/library/x509_crt.c b/library/x509_crt.c
+index a6cccf814..1b34b7d50 100644
+--- a/library/x509_crt.c
++++ b/library/x509_crt.c
+@@ -2432,6 +2432,8 @@ static int x509_crt_check_signature( const mbedtls_x509_crt *child,
+     md_info = mbedtls_md_info_from_type( child->sig_md );
+     hash_len = mbedtls_md_get_size( md_info );
+ 
++    PUFS_TLS_DEMO_LOG("[TLS] x509_crt_check_signature calls mbedtls_md to calculate hash\n");
++
+     /* Note: hash errors can happen only after an internal error */
+     if( mbedtls_md( md_info, child->tbs.p, child->tbs.len, hash ) != 0 )
+         return( -1 );

@@ -25,6 +25,18 @@ target_link_libraries(
         openssl_posix
 )
 
+
+# PUFS +++
+if (PUFS_MODIFY)
+set (USE_PUFS_ROOT_CA ON)
+
+if (USE_PUFS_ROOT_CA)
+    message("Use device signed by pufsecurity root ca ")
+    add_definitions(-DPUFS_ROOT_CA)
+endif()
+endif()
+# PUFS ---
+
 target_include_directories(
     ${DEMO_NAME}
     PUBLIC
